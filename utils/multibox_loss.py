@@ -1,0 +1,105 @@
+import numpy as np
+import torch
+from torch import nn
+from torch.nn import functional as F
+from torch import Tensor
+from torch import distributed as dist
+from typing import Union, Optional, Tuple
+
+from .ssd_utils import *
+
+def reduce_tensor(inp_tensor):
+    size = float(dist.get_world_size())
+    inp_tensor_clone = inp_tensor.clone()
+    dist.barrier()
+    dist.all_reduce(inp_tensor_clone, op=dist.ReduceOp.SUM)
+    inp_tensor_clone /= size
+    return inp_tensor_clone
+
+
+def tensor_to_python_float(inp_tensor, is_distributed):
+    if is_distributed and isinstance(inp_tensor, torch.Tensor):
+        inp_tensor = reduce_tensor(inp_tensor=inp_tensor)
+
+    if isinstance(inp_tensor, torch.Tensor) and inp_tensor.numel() > 1:
+        # For IOU, we get a C-dimensional tensor (C - number of classes)
+        # so, we convert here to a numpy array
+        return inp_tensor.cpu().numpy()
+    elif hasattr(inp_tensor, 'item'):
+        return inp_tensor.item()
+    elif isinstance(inp_tensor, (int, float)):
+        return inp_tensor * 1.0
+    else:
+        raise NotImplementedError("The data type is not supported yet in tensor_to_python_float function")
+
+class multibox_loss(nn.Module):
+  
+  def __init__(self):
+    super(multibox_loss, self).__init__()
+    self.unscaled_reg_loss = 1e-7
+    self.unscaled_conf_loss = 1e-7
+    self.neg_pos_ratio = 3
+    self.wt_loc = 1.0
+    self.curr_iter = 0
+    self.max_iter = -1
+    self.update_inter = 200
+    self.is_distributed = False
+
+    self.reset_unscaled_loss_values()
+
+  # confidence: (batch_size, num_priors, num_classes)
+  # predicted_locations :(batch_size, num_priors, 4)
+  def reset_unscaled_loss_values(self):
+    # initialize with very small float values
+    self.unscaled_conf_loss = 1e-7
+    self.unscaled_reg_loss = 1e-7
+
+  def forward(self, x_hat, y_hat, x, y):
+
+    confidence, predicted_locations = y_hat, x_hat
+
+    gt_labels = y
+    gt_locations = x
+
+    num_classes = confidence.shape[-1]
+    num_coordinates = predicted_locations.shape[-1]
+
+    with torch.no_grad():
+        loss = -F.log_softmax(confidence, dim=2)[:, :, 0]
+        mask = hard_negative_mining(loss, gt_labels, self.neg_pos_ratio)
+
+
+    confidence = confidence[mask, :]
+    classification_loss = F.cross_entropy(
+        input=confidence.reshape(-1, num_classes),
+        target=gt_labels[mask].long(),
+        reduction="sum"
+    )
+
+    pos_mask = gt_labels > 0
+    
+    predicted_locations = predicted_locations[pos_mask, :].view(-1, num_coordinates)
+    gt_locations = gt_locations[pos_mask, :].view(-1, num_coordinates)
+    smooth_l1_loss = F.smooth_l1_loss(predicted_locations, gt_locations, reduction="sum")
+    num_pos = gt_locations.shape[0]
+
+    if self.curr_iter <= self.max_iter:
+        # classification loss may dominate localization loss or vice-versa
+        # therefore, to ensure that their contributions are equal towards total loss, we scale regression loss.
+        # if classification loss contribution is less (or more), then scaling factor will be < 1 ( > 1)
+        self.unscaled_conf_loss += tensor_to_python_float(classification_loss, is_distributed=self.is_distributed)
+        self.unscaled_reg_loss += tensor_to_python_float(smooth_l1_loss, is_distributed=self.is_distributed)
+
+        if (self.curr_iter + 1) % self.update_inter == 0 or self.curr_iter == self.max_iter:
+            before_update = round(tensor_to_python_float(self.wt_loc), 4)
+            self.wt_loc = self.unscaled_conf_loss / self.unscaled_reg_loss
+            self.reset_unscaled_loss_values()
+            after_update = round(tensor_to_python_float(self.wt_loc), 4)
+
+        self.curr_iter += 1
+
+    if self.wt_loc > 0.0:
+        smooth_l1_loss = smooth_l1_loss * self.wt_loc
+
+    total_loss = (smooth_l1_loss + classification_loss) / num_pos
+    return total_loss
