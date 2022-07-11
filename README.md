@@ -34,6 +34,5 @@ python infer.py --batch /path/to/your/image_folder
 
 ## Credits:
 
-### Code credits: [ml_cvnets](https://github.com/apple/ml-cvnets/tree/cvnets-v0.1), [chinhsuanwu
-](https://github.com/chinhsuanwu/mobilevit-pytorch), [sgrvinod](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection)
+### Code credits: [ml_cvnets](https://github.com/apple/ml-cvnets/tree/cvnets-v0.1), [chinhsuanwu](https://github.com/chinhsuanwu/mobilevit-pytorch), [sgrvinod](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection)
 ### Paper: [Mobile_VIT](https://arxiv.org/abs/2110.02178)
