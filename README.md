@@ -32,7 +32,15 @@ python infer.py --batch /path/to/your/image_folder
   <img src="dets.png" width = 1000>
 </p>
 
-## Credits:
+## Citation
 
-### Code credits: [ml_cvnets](https://github.com/apple/ml-cvnets/tree/cvnets-v0.1), [chinhsuanwu](https://github.com/chinhsuanwu/mobilevit-pytorch), [sgrvinod](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection)
-### Paper: [Mobile_VIT](https://arxiv.org/abs/2110.02178)
+```bibtex
+@article{mehta2021mobilevit,
+  title={MobileViT: Light-weight, General-purpose, and Mobile-friendly Vision Transformer},
+  author={Mehta, Sachin and Rastegari, Mohammad},
+  journal={arXiv preprint arXiv:2110.02178},
+  year={2021}
+}
+```
+
+### Code credits: [ml_cvnets](https://github.com/apple/ml-cvnets/tree/cvnets-v0.1), [chinhsuanwu](https://github.com/chinhsuanwu/mobilevit-pytorch)
