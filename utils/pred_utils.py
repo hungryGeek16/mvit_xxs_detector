@@ -4,12 +4,6 @@ from torchvision.ops import nms as torch_nms
 from torch import Tensor
 from typing import NamedTuple
 
-
-def predict(confidences, locations, anchors):
-    scores = nn.Softmax(dim=0)(confidences)
-    boxes = convert_to_boxes(pred_locations=locations, anchors=anchors)
-    return scores, boxes
-
 def nms(boxes, scores, nms_threshold, top_k=200):
     """
     Args:
