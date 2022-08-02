@@ -114,7 +114,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--img_path", type=str, default="", help="path to input image")
 parser.add_argument("--batch", type=str, default="", help="path to batch of images")
-parser.add_argument("--model_path", type=str, default="mvit_det_81.pt", help="path to input image")
+parser.add_argument("--model_path", type=str, default="mvit_seperated.pt", help="path to input image")
 parser.add_argument("--classes", type=int, default=80, help="Total classes that are required")
 
 args = parser.parse_args()
