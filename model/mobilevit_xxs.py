@@ -376,7 +376,7 @@ class MobileDetector(nn.Module):
     out_1 = self.output_1(proj_out_k)
     out_1_class = self.output_1_class(proj_out_k)
     box_locations_1 = out_1.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_1 = out_1_class.permute(0,2,3,1).contiguous().view(1, bt, -1, 81)
+    box_classes_1 = out_1_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
     
     # 2nd SSD Head
     proj_out_1 = self.project_2(outs[1])
@@ -384,14 +384,14 @@ class MobileDetector(nn.Module):
     out_2 = self.output_2(proj_out_1_k)
     out_2_class = self.output_2_class(proj_out_1_k)
     box_locations_2 = out_2.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_2 = out_2_class.permute(0,2,3,1).contiguous().view(1, bt, -1, 81)
+    box_classes_2 = out_2_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
 
     # 3rd SSD Head
     prev_1 = self.output_3_prev(outs[2])
     out_3 = self.output_3(prev_1)
     out_3_class = self.output_3_class(prev_1)
     box_locations_3 = out_3.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_3 = out_3_class.permute(0,2,3,1).contiguous().view(1, bt, -1, 81)
+    box_classes_3 = out_3_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
 
     # 4th SSD Head
     prev_2 = self.output_4_prev(outs[3])
@@ -399,21 +399,21 @@ class MobileDetector(nn.Module):
 
     out_4_class = self.output_4_class(prev_2)
     box_locations_4 = out_4.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_4 = out_4_class.permute(0,2,3,1).contiguous().view(1, bt, -1, 81)
+    box_classes_4 = out_4_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
     
     # 5th SSD Head
     prev_3 = self.output_5_prev(outs[4])
     out_5 = self.output_5(prev_3)
     out_5_class = self.output_5_class(prev_3)
     box_locations_5 = out_5.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_5 = out_5_class.permute(0,2,3,1).contiguous().view(1, bt, -1, 81)
+    box_classes_5 = out_5_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
     
     # 6th SSD Head
     sec = self.second_last(outs[5].unsqueeze(2).reshape(outs[5].shape[0], 128, 1, 1))
     las = self.last(sec)
     las_class = self.last_class(sec)
     box_locations_6 = las.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_6 = las_class.permute(0,2,3,1).contiguous().view(1, bt, -1, 81)
+    box_classes_6 = las_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
 
 
     box_locations = torch.cat((box_locations_1, box_locations_2,
