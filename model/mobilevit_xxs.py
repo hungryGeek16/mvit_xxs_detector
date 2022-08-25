@@ -316,12 +316,11 @@ class MobileViT(nn.Module):
         return first_head_in, second_head_in, third_head_in, fourth_head_in, fifth_head_in, last_head
 
 class MobileDetector(nn.Module):
-  def __init__(self, classes = 81):
+  def __init__(self):
     super().__init__()
     self.dims = [64, 80, 96]
     self.channels = [16, 16, 24, 24, 48, 48, 64, 64, 80, 80, 320]
     self.heads = MobileViT((320, 320),self.dims, self.channels, expansion=2)
-    self.classes = classes
 
     # Projections:
     self.project_1 = conv_1x1_bn_relu(64, 512)
@@ -331,31 +330,26 @@ class MobileDetector(nn.Module):
     self.output_1_prev =  nn.Sequential(nn.Conv2d(512, 512, 3, 1, 1, groups=512, bias=False),
                           nn.BatchNorm2d(512))
     self.output_1 = nn.Conv2d(512, 4*6, 1, 1, 0, bias=True)
-    self.output_1_class =  nn.Conv2d(512, (classes)*6, 1, 1, 0, bias=True)
 
     # Second output 
     self.output_2_prev =  nn.Sequential(nn.Conv2d(256, 256, 3, 1, 1, groups=256, bias=False),
                           nn.BatchNorm2d(256))
     self.output_2 = nn.Conv2d(256, 4*6, 1, 1, 0, bias=True)
-    self.output_2_class =  nn.Conv2d(256, (classes)*6, 1, 1, 0, bias=True)
     
     # Third output
     self.output_3_prev =  nn.Sequential(nn.Conv2d(256, 256, 3, 1, 1, groups=256, bias=False),
                           nn.BatchNorm2d(256))
     self.output_3 = nn.Conv2d(256, 4*6, 1, 1, 0, bias=True)
-    self.output_3_class =  nn.Conv2d(256, (classes)*6, 1, 1, 0, bias=True)
     
     # Fourth output
     self.output_4_prev =  nn.Sequential(nn.Conv2d(128, 128, 3, 1, 1, groups=128, bias=False),
                           nn.BatchNorm2d(128))
     self.output_4 = nn.Conv2d(128, 4*6, 1, 1, 0, bias=True)
-    self.output_4_class =  nn.Conv2d(128, (classes)*6, 1, 1, 0, bias=True)
-    
+
     # Fifth output
     self.output_5_prev =  nn.Sequential(nn.Conv2d(128, 128, 3, 1, 1, groups=128, bias=False),
                           nn.BatchNorm2d(128))
     self.output_5 = nn.Conv2d(128, 4*6, 1, 1, 0, bias=True)
-    self.output_5_class =  nn.Conv2d(128, (classes)*6, 1, 1, 0, bias=True)
 
     # 1 x 1 Conv last
     self.second_last = nn.Sequential(
@@ -363,64 +357,89 @@ class MobileDetector(nn.Module):
         nn.ReLU())
 
     self.last = nn.Conv2d(64, 4*4, 1, 1, 0, bias=True)
-    self.last_class = nn.Conv2d(64, self.classes*4, 1, 1, 0, bias=True)
 
 
   def forward(self, x):
-    bt = x.shape[0]
-    outs = self.heads.forward(x)
-    
+
+    outs = self.heads.forward(x)    
     # 1st SSD Head
     proj_out = self.project_1(outs[0])
     proj_out_k = self.output_1_prev(proj_out)
     out_1 = self.output_1(proj_out_k)
-    out_1_class = self.output_1_class(proj_out_k)
-    box_locations_1 = out_1.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_1 = out_1_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
     
     # 2nd SSD Head
     proj_out_1 = self.project_2(outs[1])
     proj_out_1_k = self.output_2_prev(proj_out_1)
     out_2 = self.output_2(proj_out_1_k)
-    out_2_class = self.output_2_class(proj_out_1_k)
-    box_locations_2 = out_2.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_2 = out_2_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
 
     # 3rd SSD Head
     prev_1 = self.output_3_prev(outs[2])
     out_3 = self.output_3(prev_1)
-    out_3_class = self.output_3_class(prev_1)
-    box_locations_3 = out_3.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_3 = out_3_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
 
     # 4th SSD Head
     prev_2 = self.output_4_prev(outs[3])
     out_4 = self.output_4(prev_2)
 
-    out_4_class = self.output_4_class(prev_2)
-    box_locations_4 = out_4.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_4 = out_4_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
-    
     # 5th SSD Head
     prev_3 = self.output_5_prev(outs[4])
     out_5 = self.output_5(prev_3)
-    out_5_class = self.output_5_class(prev_3)
-    box_locations_5 = out_5.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
-    box_classes_5 = out_5_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
     
     # 6th SSD Head
     sec = self.second_last(outs[5].unsqueeze(2).reshape(outs[5].shape[0], 128, 1, 1))
     las = self.last(sec)
-    las_class = self.last_class(sec)
-    box_locations_6 = las.permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
+
+    return [out_1, out_2, out_3, out_4, out_5, las], [proj_out_k, proj_out_1_k, prev_1, prev_2, prev_3, sec]
+
+
+class MobileDetector_Tr(nn.Module):
+
+  def __init__(self, classes=81):
+    super().__init__()
+    self.model = MobileDetector()
+    self.output_1_class =  nn.Conv2d(512, (classes)*6, 1, 1, 0, bias=True)
+    self.output_2_class =  nn.Conv2d(256, (classes)*6, 1, 1, 0, bias=True)
+    self.output_3_class =  nn.Conv2d(256, (classes)*6, 1, 1, 0, bias=True)
+    self.output_4_class =  nn.Conv2d(128, (classes)*6, 1, 1, 0, bias=True)
+    self.output_5_class =  nn.Conv2d(128, (classes)*6, 1, 1, 0, bias=True)
+    self.last_class = nn.Conv2d(64, classes*4, 1, 1, 0, bias=True)
+    self.classes = classes
+
+
+  def forward(self, x):  
+
+    bt = x.shape[0]
+    box_vals, class_vals = self.model.forward(x)
+    out_1_class = self.output_1_class(class_vals[0])
+    out_2_class = self.output_2_class(class_vals[1])
+    out_3_class = self.output_3_class(class_vals[2])
+    out_4_class = self.output_4_class(class_vals[3])
+    out_5_class = self.output_5_class(class_vals[4])
+    las_class = self.last_class(class_vals[5])
+
+    box_locations_1 = box_vals[0].permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
+    box_classes_1 = out_1_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
+
+    box_locations_2 = box_vals[1].permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
+    box_classes_2 = out_2_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
+
+    box_locations_3 = box_vals[2].permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
+    box_classes_3 = out_3_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
+
+    box_locations_4 = box_vals[3].permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
+    box_classes_4 = out_4_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
+
+    box_locations_5 = box_vals[4].permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
+    box_classes_5 = out_5_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
+
+    box_locations_6 = box_vals[5].permute(0,2,3,1).contiguous().view(1, bt, -1, 4)
     box_classes_6 = las_class.permute(0,2,3,1).contiguous().view(1, bt, -1, self.classes)
 
 
     box_locations = torch.cat((box_locations_1, box_locations_2,
-                               box_locations_3, box_locations_4, 
-                               box_locations_5, box_locations_6), dim=2)
+                                box_locations_3, box_locations_4, 
+                                box_locations_5, box_locations_6), dim=2)
     box_classes = torch.cat((box_classes_1, box_classes_2,
-                             box_classes_3, box_classes_4, 
-                             box_classes_5, box_classes_6), dim=2)
-    
+                              box_classes_3, box_classes_4, 
+                              box_classes_5, box_classes_6), dim=2)
+
     return box_locations, box_classes
