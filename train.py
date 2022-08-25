@@ -29,7 +29,6 @@ parser.add_argument("--classes", type=int, default=80, help="Total classes that 
 parser.add_argument("--batch_size", type=int, default=32, help="Training batch size")
 parser.add_argument("--epochs", type=int, default=30, help="Total number of epochs")
 parser.add_argument("--lr", type=float, default = 1e-3, help ="learning rate")
-parser.add_argument("--warmup_epochs", type=int, default= 5, help ="warmup iterations value")
 parser.add_argument("--grad_clip", type=bool, default= False, help= "clip gradients")
 parser.add_argument("--cudnn_benchmark", type=bool, default= False, help= "CUDA SUPPORT")
 parser.add_argument("--print_freq", type=int, default = 1, help ="Print loss value frequency")
