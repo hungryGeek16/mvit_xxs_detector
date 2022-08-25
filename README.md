@@ -14,7 +14,7 @@ python install -r requirement.txt
 python infer.py --img_path /path/to/your/image --model_path /path/to/the/model --classes number of classes
 ```
 
-* The original model that was trained on 81 coco classes is present in repository itself by the name ```mvit_seperated.pt```, to execute this model, we can simply ignore **model_path** and **classes** arguments, since they are passed to the program as default parameters. Hence the final command becomes:
+* The original model that was trained on 81 coco classes is present in repository itself by the name ```mvit_og.pt```, to execute this model, we can simply ignore **model_path** and **classes** arguments, since they are passed to the program as default parameters. Hence the final command becomes:
 
 ```bash
 python infer.py --img_path /path/to/your/image 
