@@ -35,7 +35,7 @@ python infer.py --batch /path/to/your/image_folder
 # MobileVit XXS Training instructions:
 
 * To transfer learn MobileVIT detector on a dataset then it must be in COCO format.
-* Dataset strutcture should as the one shown below:
+* Dataset strutcture should be in the format as shown below:
 ```bash
 --Dataset
      |---> train
