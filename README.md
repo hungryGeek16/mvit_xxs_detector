@@ -32,6 +32,27 @@ python infer.py --batch /path/to/your/image_folder
   <img src="dets.png" width = 1000>
 </p>
 
+# MobileVit XXS Training instructions:
+
+* To transfer learn MobileVIT detector on a dataset then it must be in COCO format.
+* Dataset strutcture should as the one shown below:
+```bash
+--Dataset
+     |---> train
+     |---> valid
+```
+* To train the your dataset, please follow the command given below:
+```bash
+python train.py --path_to_images path/to/dataset --lr 0.01 --epochs 10 --classes no_of_classes_present --batch_size 32 --path_test_annotations path/to/test/annotations --path_train_annotations path/to/test/annotations --model_path mvit_og.pt
+```
+
+* After training, the file will output two files: a. loss_trends.jpg: training loss graph, b. mvit.pt: learned model file
+* The mvit.pt file can be inferred using the infer.py file, you just have to pass model path, images or bath path and number of classes it detects.
+
+```bash
+python infer.py --model_path path/to/model --classes no_of_classes --img_path /path/to/image/
+```
+
 ## Citation
 
 ```bibtex
