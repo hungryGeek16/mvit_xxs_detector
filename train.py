@@ -95,7 +95,7 @@ for p in detector.model.parameters():
 anchors = generate_anchors()
 # Learning parameters 
 params = [p for p in detector.parameters() if p.requires_grad]
-optimizer = torch.optim.AdamW(params, lr=args.lr, betas=(0.9, 0.98), eps=1e-08, weight_decay=0.01, amsgrad=False)
+optimizer = torch.optim.SGD(params, lr=args.lr, momentum=0.9, weight_decay=5e-4)
 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9, 10], gamma=0.1)
 
 criterion = multibox_loss().to(device)
