@@ -118,7 +118,7 @@ def plot_loss(loss):
   plt.xlabel('Iterations')
   plt.ylabel('Loss')
   plt.title('Loss vs Iterations')
-  plt.savfig("loss_trend.jpg")
+  plt.savefig("loss_trend.jpg")
 
 # DataLoader is iterable over Dataset
 for epoch in range(1,args.epochs+1):
