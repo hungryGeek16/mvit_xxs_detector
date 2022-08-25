@@ -9,29 +9,14 @@ import copy
 import os
 import sys
 
-from model.mobilevit_xxs import MobileDetector
+from model.mobilevit_xxs import MobileDetector_Tr
 from utils.box_utils import convert_to_boxes
 from utils.anchors import generate_anchors
 from utils.pred_utils import predict
 
 # Number of classes being detected
 object_names =    ['background',
-                   'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
-                   'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
-                   'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
-                   'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra',
-                   'giraffe', 'backpack', 'umbrella', 'handbag', 'tie',
-                   'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
-                   'kite', 'baseball bat', 'baseball glove', 'skateboard',
-                   'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
-                   'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
-                   'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
-                   'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
-                   'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
-                   'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
-                   'refrigerator', 'book', 'clock', 'vase', 'scissors',
-                   'teddy bear', 'hair drier', 'toothbrush'
-                   ]
+                   'raccon']
 
 # initializing varibales for further use
 LABEL_COLOR = [255, 255, 255]
@@ -108,13 +93,12 @@ def infer(input_img, im_copy, model, anchors, orig_h, orig_w):
     print("No detections found in this image")
     return np.array([])
 
-
 # Parsing command line arguements
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--img_path", type=str, default="", help="path to input image")
 parser.add_argument("--batch", type=str, default="", help="path to batch of images")
-parser.add_argument("--model_path", type=str, default="mvit_seperated.pt", help="path to input image")
+parser.add_argument("--model_path", type=str, default="mvit_og.pt", help="path to input image")
 parser.add_argument("--classes", type=int, default=80, help="Total classes that are required")
 
 args = parser.parse_args()
@@ -129,14 +113,17 @@ if args.img_path != "" and args.batch != "":
 # Load weights in the model
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 classes = args.classes + 1 # Adding 1 for the backgorunf class
-model = MobileDetector(classes) # Intialize mobile_vit_xxs with 81 classes
-t = torch.load(args.model_path, map_location=device) 
-model.load_state_dict(t)
-model.eval()
-model = model.to(device)
+detector = MobileDetector_Tr(classes) # Intialize mobile_vit_xxs with 81 classes
+t = torch.load(args.model_path, map_location=device)
+detector.load_state_dict(t)
+for p in detector.model.parameters():
+    p.requires_grad = False  
+
+detector.eval()
+detector = detector.to(device)
 print("Weights Initialized!!!")
 print('<<<<<<< Model loaded >>>>>>>')
-print(model)
+print(detector)
 print('<<<<<<<>>>>>>>')
 
 #Generate anchors
@@ -149,17 +136,17 @@ if args.batch != "":
     os.mkdir("dets_full")
 
   for i in os.listdir(args.batch):
-    if i.count(".jpg") == 0:
+    if i.count(".jpg") == 0 and i.count(".jpeg") == 0 and i.count(".png") == 0:
       continue
 
     path = os.path.join(args.batch, i)
     image, im_copy, orig_h, orig_w = preprocess_image(path, device)
-    final_img = infer(image, im_copy, model, anchors, orig_h, orig_w)
+    final_img = infer(image, im_copy, detector, anchors, orig_h, orig_w)
     if final_img.size != 0:
       cv2.imwrite("dets_full/detect_"+i, final_img)
 
 else:
   image, im_copy, orig_h, orig_w = preprocess_image(args.img_path, device)
-  final_img = infer(image, im_copy, model, anchors, orig_h, orig_w)
+  final_img = infer(image, im_copy, detector, anchors, orig_h, orig_w)
   if final_img.size != 0:
     cv2.imwrite("detected.jpg", final_img)
