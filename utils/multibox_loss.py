@@ -80,26 +80,7 @@ class multibox_loss(nn.Module):
     
     predicted_locations = predicted_locations[pos_mask, :].view(-1, num_coordinates)
     gt_locations = gt_locations[pos_mask, :].view(-1, num_coordinates)
-    smooth_l1_loss = F.smooth_l1_loss(predicted_locations, gt_locations, reduction="sum")
     num_pos = gt_locations.shape[0]
 
-    if self.curr_iter <= self.max_iter:
-        # classification loss may dominate localization loss or vice-versa
-        # therefore, to ensure that their contributions are equal towards total loss, we scale regression loss.
-        # if classification loss contribution is less (or more), then scaling factor will be < 1 ( > 1)
-        self.unscaled_conf_loss += tensor_to_python_float(classification_loss, is_distributed=self.is_distributed)
-        self.unscaled_reg_loss += tensor_to_python_float(smooth_l1_loss, is_distributed=self.is_distributed)
-
-        if (self.curr_iter + 1) % self.update_inter == 0 or self.curr_iter == self.max_iter:
-            before_update = round(tensor_to_python_float(self.wt_loc), 4)
-            self.wt_loc = self.unscaled_conf_loss / self.unscaled_reg_loss
-            self.reset_unscaled_loss_values()
-            after_update = round(tensor_to_python_float(self.wt_loc), 4)
-
-        self.curr_iter += 1
-
-    if self.wt_loc > 0.0:
-        smooth_l1_loss = smooth_l1_loss * self.wt_loc
-
-    total_loss = (smooth_l1_loss + classification_loss) / num_pos
+    total_loss = classification_loss / num_pos
     return total_loss
