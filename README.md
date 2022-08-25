@@ -5,7 +5,7 @@
 * Installation of necessary packages can be done by running the command given below:
 
 ```bash
-python install -r requirement.txt
+python install -r requirements.txt
 ```
 
 * After completing the installation step, one could inference the model on images by executing the command given below:
