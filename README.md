@@ -46,7 +46,9 @@ python infer.py --batch /path/to/your/image_folder
 python train.py --path_to_images path/to/dataset --lr 0.01 --epochs 10 --classes no_of_classes_present --batch_size 32 --path_test_annotations path/to/test/annotations.json --path_train_annotations path/to/test/annotations.json --model_path mvit_og.pt
 ```
 
-* After training, the file will output two files: a. loss_trends.jpg: training loss graph, b. mvit.pt: learned model file
+* After training, the file will output two files:  
+   a. loss_trends.jpg: training loss graph.  
+   b. mvit.pt: learned model file.  
 * The mvit.pt file can be inferred using the infer.py file, you just have to pass model path, images or bath path and number of classes it detects.
 
 ```bash
