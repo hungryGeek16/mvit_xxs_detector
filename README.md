@@ -34,14 +34,14 @@ python infer.py --batch /path/to/your/image_folder
 
 # MobileVit XXS Training instructions:
 
-* To transfer learn MobileVIT detector on a dataset then it must be in COCO format.
+* To fine-tune MobileVIT detector on a custom dataset then it must be in COCO format.
 * Dataset strutcture should be in the format as shown below:
 ```bash
 --Dataset
      |---> train
      |---> valid
 ```
-* To train the your dataset, please follow the command given below:
+* To train your dataset, please follow the commands given below:
 ```bash
 python train.py --path_to_images path/to/dataset --lr 0.01 --epochs 10 --classes no_of_classes_present --batch_size 32 --path_test_annotations path/to/test/annotations.json --path_train_annotations path/to/test/annotations.json --model_path mvit_og.pt
 ```
