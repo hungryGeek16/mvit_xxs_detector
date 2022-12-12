@@ -44,7 +44,7 @@ train_coco = args.path_train_annotations
 test_coco = args.path_test_annotations
 
 train_dir = os.path.join(data_dir,"train")
-test_dir = os.path.join(data_dir,"valid")
+test_dir = os.path.join(data_dir,"test")
 
 # create own Dataset
 train = CustomCOCODataset(root=train_dir,
