@@ -43,7 +43,7 @@ python infer.py --batch /path/to/your/image_folder
 ```
 * To train your dataset, please follow the commands given below:
 ```bash
-python train.py --path_to_images path/to/dataset --lr 0.01 --epochs 10 --classes no_of_classes_present --batch_size 32 --path_test_annotations path/to/test/annotations.json --path_train_annotations path/to/test/annotations.json --model_path mvit_og.pt
+python train.py --path_to_images path/to/dataset --lr 0.01 --epochs 10 --classes no_of_classes_present --batch_size 32 --path_test_annotations path/to/test/annotations.json --path_train_annotations path/to/train/annotations.json --model_path mvit_og.pt
 ```
 
 * After training, the file will output two files:  
