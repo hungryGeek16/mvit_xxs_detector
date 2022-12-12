@@ -39,7 +39,7 @@ python infer.py --batch /path/to/your/image_folder
 ```bash
 --Dataset
      |---> train
-     |---> valid
+     |---> test
 ```
 * To train your dataset, please follow the commands given below:
 ```bash
