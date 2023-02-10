@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from einops import rearrange
+import math
 
 def conv_1x1_bn(inp, oup):
     return nn.Sequential(
@@ -220,6 +220,8 @@ class MobileViTBlock(nn.Module):
         super().__init__()
         self.ph, self.pw = patch_size
 
+        self.patch_area = self.pw * self.ph
+
         self.conv1 = conv_nxn_bn(channel, channel, kernel_size)
         self.conv2 = conv_1x1(channel, dim, 0)
 
@@ -227,6 +229,65 @@ class MobileViTBlock(nn.Module):
 
         self.conv3 = conv_1x1_bn(dim, channel)
         self.conv4 = conv_nxn_bn(2 * channel, channel, kernel_size)
+        
+    # Credits ml-cvnets by Sachin Mehta
+    def unfolding(self, feature_map):
+        patch_w, patch_h = self.pw, self.ph
+        patch_area = int(patch_w * patch_h)
+        batch_size, in_channels, orig_h, orig_w = feature_map.shape
+
+        new_h = int(math.ceil(orig_h / self.ph) * self.ph)
+        new_w = int(math.ceil(orig_w / self.pw) * self.pw)
+
+        # number of patches along width and height
+        num_patch_w = new_w // patch_w # n_w
+        num_patch_h = new_h // patch_h # n_h
+        num_patches = num_patch_h * num_patch_w # N
+
+        # [B, C, H, W] --> [B * C * n_h, p_h, n_w, p_w]
+        reshaped_fm = feature_map.reshape(batch_size * in_channels * num_patch_h, patch_h, num_patch_w, patch_w)
+        # [B * C * n_h, p_h, n_w, p_w] --> [B * C * n_h, n_w, p_h, p_w]
+        transposed_fm = reshaped_fm.transpose(1, 2)
+        # [B * C * n_h, n_w, p_h, p_w] --> [B, C, N, P] where P = p_h * p_w and N = n_h * n_w
+        reshaped_fm = transposed_fm.reshape(batch_size, in_channels, num_patches, patch_area)
+        # [B, C, N, P] --> [B, P, N, C]
+        transposed_fm = reshaped_fm.transpose(1, 3)
+        # [B, P, N, C] --> [BP, N, C]
+        patches = transposed_fm.reshape(batch_size * patch_area, num_patches, -1)
+
+        info_dict = {
+            "orig_size": (orig_h, orig_w),
+            "batch_size": batch_size,
+            "total_patches": num_patches,
+            "num_patches_w": num_patch_w,
+            "num_patches_h": num_patch_h
+        }
+
+        return patches, info_dict
+    
+    # Credits ml-cvnets by Sachin Mehta
+    def folding(self, patches, info_dict):
+        n_dim = patches.dim()
+        assert n_dim == 3, "Tensor should be of shape BPxNxC. Got: {}".format(patches.shape)
+        # [BP, N, C] --> [B, P, N, C]
+        patches = patches.contiguous().view(info_dict["batch_size"], self.patch_area, info_dict["total_patches"], -1)
+
+        batch_size, pixels, num_patches, channels = patches.size()
+        num_patch_h = info_dict["num_patches_h"]
+        num_patch_w = info_dict["num_patches_w"]
+
+        # [B, P, N, C] --> [B, C, N, P]
+        patches = patches.transpose(1, 3)
+
+        # [B, C, N, P] --> [B*C*n_h, n_w, p_h, p_w]
+        feature_map = patches.reshape(batch_size * channels * num_patch_h, num_patch_w, self.ph, self.pw)
+        # [B*C*n_h, n_w, p_h, p_w] --> [B*C*n_h, p_h, n_w, p_w]
+        feature_map = feature_map.transpose(1, 2)
+        # [B*C*n_h, p_h, n_w, p_w] --> [B, C, H, W]
+        feature_map = feature_map.reshape(batch_size, channels, num_patch_h * self.ph, num_patch_w * self.pw)
+
+        return feature_map
+
     
     def forward(self, x):
         
@@ -239,11 +300,20 @@ class MobileViTBlock(nn.Module):
         # Global representations
         _, _, h, w = x.shape
 
-        x = rearrange(x, 'b d (h ph) (w pw) -> b (ph pw) (h w) d', ph=self.ph, pw=self.pw)
+        # Batch, Channels, Height, Width --> Batch, Ph x Pw, N_Patchs, Channels
+
+        x, info_dict = self.unfolding(x)
+
+        x = x.unsqueeze(0)
 
         x = self.transformer(x)
 
-        x = rearrange(x, 'b (ph pw) (h w) d -> b d (h ph) (w pw)', h=h//self.ph, w=w//self.pw, ph=self.ph, pw=self.pw)
+        # Batch, Ph x Pw, N_Patchs, Channels --> Batch, Channels, Height, Width
+        
+        x = x.squeeze(0)
+
+        x = self.folding(patches=x, info_dict=info_dict)
+
         # Fusion
         x = self.conv3(x)
 
